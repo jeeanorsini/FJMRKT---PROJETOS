@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Instagram Feed Planner - Grid Image Splitter</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;600&display=swap');
+
+  :root {
+    --primary-color: #ff5a5f;
+    --primary-dark: #d84343;
+    --bg-color: #121212;
+    --text-color: #e0e0e0;
+    --accent-color: #00bfa5;
+    --border-color: #333;
+    --shadow-color: rgba(0,0,0,0.6);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    font-family: 'Poppins', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  header {
+    background-color: var(--primary-dark);
+    padding: 1.5rem 2rem;
+    text-align: center;
+    box-shadow: 0 2px 8px var(--shadow-color);
+  }
+
+  header h1 {
+    margin: 0;
+    font-weight: 600;
+    font-size: 1.8rem;
+    letter-spacing: 0.05em;
+    user-select: none;
+  }
+
+  main {
+    flex-grow: 1;
+    max-width: 960px;
+    margin: 2rem auto 4rem;
+    width: 95%;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .upload-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  label[for="image-upload"] {
+    cursor: pointer;
+    background: var(--primary-color);
+    color: #fff;
+    padding: 0.7rem 1.4rem;
+    border-radius: 6px;
+    font-weight: 600;
+    width: fit-content;
+    user-select: none;
+    transition: background-color 0.3s ease;
+  }
+
+  label[for="image-upload"]:hover {
+    background: var(--primary-dark);
+  }
+
+  input[type="file"] {
+    display: none;
+  }
+
+  .grid-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+    color: var(--text-color);
+  }
+
+  .grid-controls label {
+    user-select: none;
+    font-weight: 600;
+  }
+
+  select {
+    background: var(--bg-color);
+    border: 1.5px solid var(--border-color);
+    color: var(--text-color);
+    font-size: 1rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: 4px;
+    transition: border-color 0.25s ease;
+  }
+
+  select:hover, select:focus {
+    border-color: var(--primary-color);
+    outline: none;
+  }
+
+  .preview-section {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .full-preview {
+    position: relative;
+    max-width: 400px;
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    box-shadow: 0 2px 10px var(--shadow-color);
+    overflow: hidden;
+  }
+
+  .full-preview img {
+    display: block;
+    width: 100%;
+    user-select: none;
+  }
+
+  .grid-overlay {
+    pointer-events: none;
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: grid;
+    grid-template-columns: repeat(var(--cols), 1fr);
+    grid-template-rows: repeat(var(--rows), 1fr);
+  }
+
+  .grid-overlay > div {
+    border: 1.5px solid rgba(255,255,255,0.5);
+  }
+
+  .split-images {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(100px,1fr));
+    max-width: 420px;
+    overflow-y: auto;
+    max-height: 400px;
+    padding-right: 6px;
+  }
+
+  .split-images img {
+    width: 100%;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px var(--shadow-color);
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border-color 0.3s ease;
+  }
+
+  .split-images img:hover {
+    border-color: var(--accent-color);
+  }
+
+  button.download-btn {
+    margin-top: 1rem;
+    background: var(--accent-color);
+    color: #121212;
+    font-weight: 600;
+    font-size: 1.2rem;
+    padding: 0.8rem 2rem;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    align-self: center;
+    user-select: none;
+    transition: background-color 0.3s ease;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+  }
+
+  button.download-btn:disabled {
+    background: #555;
+    cursor: default;
+    box-shadow: none;
+  }
+
+  button.download-btn:hover:not(:disabled) {
+    background: #00a891;
+  }
+
+  footer {
+    text-align: center;
+    padding: 1rem 1rem 2rem;
+    font-size: 0.9rem;
+    color: #666;
+    user-select: none;
+  }
+
+  /* Scrollbar for split images */
+  .split-images::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .split-images::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .split-images::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 3px;
+  }
+
+  @media (max-width: 720px) {
+    main {
+      margin: 1rem auto 3rem;
+    }
+    .preview-section {
+      flex-direction: column;
+      align-items: center;
+    }
+    .split-images {
+      grid-template-columns: repeat(auto-fill, minmax(140px,1fr));
+      max-height: none;
+      overflow-y: visible;
+    }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Instagram Feed Planner</h1>
+</header>
+<main>
+  <section class="upload-section">
+    <label for="image-upload" title="Upload your image to start planning your grid">📤 Upload Image</label>
+    <input type="file" id="image-upload" accept="image/*" />
+  </section>
+
+  <section class="grid-controls" aria-label="Select grid size">
+    <label for="rows">Rows:</label>
+    <select id="rows" aria-controls="preview" aria-label="Select number of rows">
+      <option value="1">1</option>
+      <option value="2">2</option>
+      <option value="3" selected>3</option>
+      <option value="4">4</option>
+      <option value="5">5</option>
+    </select>
+    <label for="cols">Columns:</label>
+    <select id="cols" aria-controls="preview" aria-label="Select number of columns">
+      <option value="1">1</option>
+      <option value="2">2</option>
+      <option value="3" selected>3</option>
+    </select>
+  </section>
+
+  <section class="preview-section" aria-label="Preview of the Instagram feed grid">
+    <div class="full-preview" aria-label="Full image preview with grid overlay" role="region" tabindex="0">
+      <img id="full-image" alt="Full uploaded image preview" src="" />
+      <div class="grid-overlay" id="grid-overlay" style="--rows:3; --cols:3;"></div>
+    </div>
+
+    <div class="split-images" aria-label="Split image previews" id="split-images"></div>
+  </section>
+
+  <button class="download-btn" id="download-btn" disabled title="Download split images">⬇️ Download Split Images</button>
+</main>
+<footer>
+  &copy; 2024 Instagram Feed Planner - Made with ❤️
+</footer>
+
+<script>
+  const imageUpload = document.getElementById('image-upload');
+  const fullImage = document.getElementById('full-image');
+  const gridOverlay = document.getElementById('grid-overlay');
+  const splitImagesContainer = document.getElementById('split-images');
+  const downloadBtn = document.getElementById('download-btn');
+  const rowsSelect = document.getElementById('rows');
+  const colsSelect = document.getElementById('cols');
+
+  let originalImage = null;
+  let imageWidth = 0;
+  let imageHeight = 0;
+  let rows = parseInt(rowsSelect.value, 10);
+  let cols = parseInt(colsSelect.value, 10);
+  let splits = [];
+
+  function clearSplits() {
+    splits = [];
+    splitImagesContainer.innerHTML = '';
+  }
+
+  function createGridOverlay(rows, cols) {
+    gridOverlay.style.setProperty('--rows', rows);
+    gridOverlay.style.setProperty('--cols', cols);
+    gridOverlay.innerHTML = '';
+    for (let i = 0; i < rows * cols; i++) {
+      const div = document.createElement('div');
+      gridOverlay.appendChild(div);
+    }
+  }
+
+  function updateFullPreview(src) {
+    fullImage.src = src;
+  }
+
+  function sliceImage(image, rows, cols) {
+    clearSplits();
+
+    imageWidth = image.naturalWidth;
+    imageHeight = image.naturalHeight;
+
+    const tileWidth = Math.floor(imageWidth / cols);
+    const tileHeight = Math.floor(imageHeight / rows);
+
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        // Create a canvas to draw the sliced tile
+        const canvas = document.createElement('canvas');
+        canvas.width = tileWidth;
+        canvas.height = tileHeight;
+        const ctx = canvas.getContext('2d');
+
+        ctx.drawImage(
+          image,
+          col * tileWidth,
+          row * tileHeight,
+          tileWidth,
+          tileHeight,
+          0,
+          0,
+          tileWidth,
+          tileHeight
+        );
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+        splits.push(dataUrl);
+
+        // Create preview image
+        const imgPreview = document.createElement('img');
+        imgPreview.src = dataUrl;
+        imgPreview.alt = `Grid tile row ${row+1}, column ${col+1}`;
+        splitImagesContainer.appendChild(imgPreview);
+      }
+    }
+  }
+
+  function handleImageUpload(event) {
+    const file = event.target.files[0];
+    if (file && file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        originalImage = new Image();
+        originalImage.onload = function() {
+          updateFullPreview(e.target.result);
+          createGridOverlay(rows, cols);
+          sliceImage(originalImage, rows, cols);
+          downloadBtn.disabled = false;
+        };
+        originalImage.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    } else {
+      alert('Please upload a valid image file.');
+      resetApp();
+    }
+  }
+
+  function resetApp() {
+    fullImage.src = '';
+    clearSplits();
+    downloadBtn.disabled = true;
+  }
+
+  function handleGridChange() {
+    rows = parseInt(rowsSelect.value, 10);
+    cols = parseInt(colsSelect.value, 10);
+    if (originalImage) {
+      createGridOverlay(rows, cols);
+      sliceImage(originalImage, rows, cols);
+      downloadBtn.disabled = false;
+    }
+  }
+
+  function downloadSplits() {
+    if (splits.length === 0) return;
+
+    // Download each split image in the correct order with filenames like feed-01.jpg, feed-02.jpg...
+    splits.forEach((dataUrl, index) => {
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = `feed-${String(index + 1).padStart(2, '0')}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
+  }
+
+  // Event listeners
+  imageUpload.addEventListener('change', handleImageUpload);
+  rowsSelect.addEventListener('change', handleGridChange);
+  colsSelect.addEventListener('change', handleGridChange);
+  downloadBtn.addEventListener('click', downloadSplits);
+</script>
+</body>
+</html>
+
