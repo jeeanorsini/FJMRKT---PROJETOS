@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Legendas Automáticas + Análise de Cortes</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 1rem; background: #111; color: #eee; }
+    video { max-width: 100%; margin-bottom: 0.5rem; background: black; }
+    #captions { background: rgba(0,0,0,0.7); padding: 0.5rem; font-size: 1.1rem; min-height: 3rem; margin-bottom: 1rem; }
+    #cuts { color: yellow; margin-bottom: 1rem; font-size: 0.9rem; }
+    input[type=file] { margin-bottom: 1rem; }
+    button { background: #ffc600; border: none; padding: 0.6rem 1.2rem; cursor: pointer; font-weight: bold; border-radius: 3px; }
+    button:disabled { background: #555; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+
+  <h1>Legendas Automáticas + Análise de Cortes</h1>
+
+  <input type="file" id="videoFile" accept="video/*" />
+  <br />
+  <button id="processBtn" disabled>Processar Vídeo (legendar + cortes)</button>
+
+  <video id="video" controls></video>
+
+  <div id="captions">Legenda aparecerá aqui...</div>
+  <div id="cuts">Cortes detectados aparecerão aqui...</div>
+
+  <script>
+    const videoInput = document.getElementById('videoFile');
+    const processBtn = document.getElementById('processBtn');
+    const video = document.getElementById('video');
+    const captions = document.getElementById('captions');
+    const cuts = document.getElementById('cuts');
+
+    let videoURL = null;
+    let videoDuration = 0;
+
+    // Ativa o botão quando um vídeo for carregado
+    videoInput.addEventListener('change', () => {
+      if (videoURL) URL.revokeObjectURL(videoURL);
+      const file = videoInput.files[0];
+      if (!file) {
+        processBtn.disabled = true;
+        return;
+      }
+      if (file.size > 100 * 1024 * 1024) { // 100MB limite arbitrário
+        alert('Arquivo muito grande! Use até 100MB.');
+        processBtn.disabled = true;
+        return;
+      }
+      videoURL = URL.createObjectURL(file);
+      video.src = videoURL;
+      processBtn.disabled = false;
+      captions.textContent = "Legenda aparecerá aqui...";
+      cuts.textContent = "Cortes detectados aparecerão aqui...";
+    });
+
+    // Função simples para calcular brilho médio de frame em canvas
+    async function getFrameBrightness(video, time) {
+      return new Promise((resolve) => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        video.currentTime = time;
+
+        video.addEventListener('seeked', function onSeek() {
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          let total = 0;
+          for (let i = 0; i < frame.data.length; i += 4) {
+            // média dos 3 canais RGB
+            const r = frame.data[i];
+            const g = frame.data[i+1];
+            const b = frame.data[i+2];
+            total += (r + g + b) / 3;
+          }
+          const avg = total / (frame.data.length / 4);
+          video.removeEventListener('seeked', onSeek);
+          resolve(avg);
+        }, { once: true });
+      });
+    }
+
+    // Função que detecta cortes simples por variação brusca de brilho
+    async function detectCuts(video) {
+      const cutsDetected = [];
+      const interval = 0.5; // segundos entre amostras
+      let lastBrightness = await getFrameBrightness(video, 0);
+
+      for (let t = interval; t < video.duration; t += interval) {
+        const currentBrightness = await getFrameBrightness(video, t);
+        const diff = Math.abs(currentBrightness - lastBrightness);
+        // threshold empirico para corte
+        if (diff > 30) {
+          cutsDetected.push(t.toFixed(2));
+        }
+        lastBrightness = currentBrightness;
+      }
+      return cutsDetected;
+    }
+
+    // Mock transcrição: retorna array com tempo e texto
+    // Aqui você substitui pela chamada ao whisper.cpp WASM real
+    async function mockTranscribe(video) {
+      // Simula um delay
+      await new Promise(r => setTimeout(r, 2000));
+
+      // Mock simples: frase a cada 10 segundos
+      const duration = video.duration;
+      const segments = [];
+      const texts = [
+        "Este é um exemplo de legenda automática.",
+        "Aqui aparece o texto reconhecido do áudio do vídeo.",
+        "O sistema processa o áudio e gera legendas sincronizadas.",
+        "Você pode usar essa base para integrar o Whisper real.",
+        "Detectamos também possíveis cortes no vídeo.",
+        "Este é um sistema experimental rodando no navegador."
+      ];
+      let time = 0;
+      let idx = 0;
+      while (time < duration && idx < texts.length) {
+        segments.push({ start: time, end: time + 10, text: texts[idx] });
+        time += 10;
+        idx++;
+      }
+      return segments;
+    }
+
+    // Função para exibir legendas no tempo certo
+    function showCaptions(segments, video) {
+      video.addEventListener('timeupdate', () => {
+        const currentTime = video.currentTime;
+        const seg = segments.find(s => currentTime >= s.start && currentTime < s.end);
+        if (seg) {
+          captions.textContent = seg.text;
+        } else {
+          captions.textContent = "";
+        }
+      });
+    }
+
+    processBtn.addEventListener('click', async () => {
+      processBtn.disabled = true;
+      captions.textContent = "Processando transcrição...";
+      cuts.textContent = "Detectando cortes...";
+      
+      // Detectar cortes
+      const detectedCuts = await detectCuts(video);
+      cuts.textContent = "Cortes detectados em segundos: " + (detectedCuts.length ? detectedCuts.join(', ') : "Nenhum corte detectado");
+
+      // Transcrever áudio - substitua mockTranscribe pela função real Whisper WASM
+      const segments = await mockTranscribe(video);
+
+      captions.textContent = "Legenda pronta. Dê play no vídeo.";
+
+      // Exibe legendas sincronizadas
+      showCaptions(segments, video);
+
+      processBtn.disabled = false;
+    });
+  </script>
+</body>
+</html>
