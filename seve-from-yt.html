@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Baixar Vídeo do YouTube</title>
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: 2rem auto; text-align: center; background: #111; color: #fff; }
+    input, button { padding: 0.6rem; margin: 0.5rem; width: 90%; border-radius: 6px; border: none; }
+    button { background: #ffc600; font-weight: bold; cursor: pointer; }
+    .result a { display: block; margin-top: 1rem; color: #0f0; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <h1>Baixar Vídeo do YouTube</h1>
+  <input type="text" id="youtubeUrl" placeholder="Cole o link do YouTube aqui">
+  <button onclick="baixar()">Buscar Links</button>
+  <div id="result" class="result"></div>
+
+  <script>
+    async function baixar() {
+      const url = document.getElementById('youtubeUrl').value;
+      const result = document.getElementById('result');
+      result.innerHTML = "Buscando...";
+
+      // API alternativa gratuita (exemplo usando yt1s)
+      try {
+        const resp = await fetch(`https://api.vevioz.com/api/button/videos/${encodeURIComponent(url)}`);
+        const html = await resp.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, "text/html");
+        const links = doc.querySelectorAll("a");
+        
+        let output = "<h3>Links de Download:</h3>";
+        links.forEach(a => {
+          const href = a.getAttribute("href");
+          const text = a.innerText;
+          if (href && href.startsWith("https")) {
+            output += `<a href="${href}" target="_blank">${text}</a>`;
+          }
+        });
+        result.innerHTML = output || "Nenhum link encontrado. Tente outro link.";
+      } catch (err) {
+        result.innerHTML = "Erro ao buscar o vídeo.";
+        console.error(err);
+      }
+    }
+  </script>
+</body>
+</html>
